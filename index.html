@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0f172a">
+<link rel="manifest" href="manifest.json">
+<title>Paperwork</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--p:#818cf8;--p2:#6366f1;--bg:#0f172a;--s1:#1e293b;--s2:#334155;--t1:#f1f5f9;--t2:#94a3b8;--t3:#64748b;--ok:#34d399;--err:#f87171;--r:14px;--glass:rgba(30,41,59,.72)}
+body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro','Segoe UI',sans-serif;background:var(--bg);color:var(--t1);min-height:100dvh;overflow-x:hidden}
+
+/* 顶部毛玻璃 */
+.header{position:sticky;top:0;z-index:50;padding:14px 20px;display:flex;justify-content:space-between;align-items:center;background:var(--glass);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid rgba(255,255,255,.06)}
+.logo{font-size:18px;font-weight:700;display:flex;align-items:center;gap:6px}
+.logo span{background:linear-gradient(135deg,var(--p),#c084fc);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.badge{font-size:11px;padding:3px 8px;border-radius:6px;background:rgba(52,211,153,.15);color:var(--ok);font-weight:500}
+
+/* 标签 */
+.tabs{display:flex;gap:6px;padding:12px 16px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{flex-shrink:0;padding:7px 14px;border-radius:10px;font-size:13px;color:var(--t3);background:transparent;border:1px solid transparent;cursor:pointer;transition:all .25s;font-weight:500}
+.tab.active{color:#fff;background:var(--p2);box-shadow:0 2px 12px rgba(99,102,241,.3)}
+.tab:not(.active):active{background:var(--s1)}
+
+/* 页面 */
+.page{display:none;padding:0 20px 100px}
+.page.active{display:block;animation:fadeUp .3s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* 卡片 */
+.card{background:var(--s1);border-radius:var(--r);border:1px solid rgba(255,255,255,.04);padding:16px;margin-bottom:12px}
+
+/* 输入 */
+.field{margin-bottom:14px}
+.field label{display:block;font-size:12px;color:var(--t3);margin-bottom:6px;font-weight:500;text-transform:uppercase;letter-spacing:.5px}
+textarea,input[type=text],select{width:100%;padding:12px 14px;background:var(--bg);color:var(--t1);border:1px solid var(--s2);border-radius:12px;font-size:14px;outline:none;transition:border .2s}
+textarea:focus,input[type=text]:focus{border-color:var(--p)}
+textarea{min-height:90px;resize:none;line-height:1.5}
+select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%2394a3b8'%3E%3Cpath d='M6 8L1 3h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;cursor:pointer}
+input[type=file]{color:var(--t2);font-size:13px}
+
+/* 按钮 */
+.btn{width:100%;padding:13px;border:none;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;transition:all .2s;position:relative;overflow:hidden}
+.btn-p{background:linear-gradient(135deg,var(--p2),#7c3aed);color:#fff;box-shadow:0 4px 15px rgba(99,102,241,.25)}
+.btn-p:active{transform:scale(.98);box-shadow:0 2px 8px rgba(99,102,241,.2)}
+.btn-p:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.btn-s{background:var(--s2);color:var(--t1)}
+.btn-sm{width:auto;padding:6px 12px;font-size:12px;border-radius:8px}
+.btn-ghost{background:transparent;border:1px solid var(--s2);color:var(--t2)}
+
+/* 结果 */
+.result-card{background:var(--s1);border-radius:var(--r);border:1px solid rgba(255,255,255,.04);padding:16px;margin-top:12px;white-space:pre-wrap;word-break:break-all;font-size:14px;line-height:1.7;max-height:55vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.result-card .tag{display:inline-block;font-size:11px;color:var(--p);background:rgba(129,140,248,.1);padding:2px 8px;border-radius:5px;margin-bottom:8px}
+.result-card img{max-width:100%;border-radius:10px;margin:8px 0}
+.result-card audio{width:100%;margin:8px 0;border-radius:8px}
+
+/* 状态 */
+.status{text-align:center;padding:24px;color:var(--t3);font-size:14px}
+.status.err{color:var(--err)}
+.loader{display:inline-block;width:18px;height:18px;border:2px solid var(--s2);border-top-color:var(--p);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-left:8px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* 骨架屏 */
+.skeleton{background:linear-gradient(90deg,var(--s1) 25%,var(--s2) 50%,var(--s1) 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:8px;height:16px;margin-bottom:8px}
+.skeleton.h{height:40px}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+/* 历史 */
+.h-item{background:var(--s1);border-radius:12px;padding:14px;margin-bottom:8px;border:1px solid rgba(255,255,255,.04);transition:background .2s}
+.h-item:active{background:var(--s2)}
+.h-meta{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.h-meta .time{font-size:11px;color:var(--t3)}
+.h-meta .actions{display:flex;gap:4px}
+.h-preview{font-size:13px;color:var(--t2);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;cursor:pointer;line-height:1.5}
+.h-full{display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--s2);font-size:13px;line-height:1.6;white-space:pre-wrap}
+.h-full.show{display:block}
+
+/* Toast */
+.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%) translateY(-60px);padding:10px 20px;border-radius:10px;font-size:13px;font-weight:500;z-index:999;transition:transform .35s cubic-bezier(.4,0,.2,1),opacity .35s;opacity:0;backdrop-filter:blur(10px)}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+.toast.ok{background:rgba(52,211,153,.9);color:#fff}
+.toast.err{background:rgba(248,113,113,.9);color:#fff}
+
+/* 底部导航 */
+.nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--glass);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-top:1px solid rgba(255,255,255,.06);padding:6px 0;padding-bottom:max(6px,env(safe-area-inset-bottom))}
+.nav-i{flex:1;text-align:center;font-size:10px;color:var(--t3);cursor:pointer;padding:4px;transition:color .2s}
+.nav-i.active{color:var(--p)}
+.nav-i .ico{font-size:20px;display:block;margin-bottom:1px;transition:transform .2s}
+.nav-i.active .ico{transform:scale(1.1)}
+
+/* 弹窗 */
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);backdrop-filter:blur(4px);z-index:100;align-items:flex-end;justify-content:center;padding:0}
+.modal.show{display:flex}
+.modal-c{background:var(--s1);border-radius:20px 20px 0 0;padding:24px 20px;padding-bottom:max(24px,env(safe-area-inset-bottom));width:100%;max-width:500px;animation:slideUp .3s ease}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:none}}
+.modal-c h3{margin-bottom:16px;font-size:17px}
+.modal-c .handle{width:36px;height:4px;background:var(--s2);border-radius:2px;margin:0 auto 16px}
+
+/* 复制按钮 */
+.copy-btn{display:inline-flex;align-items:center;gap:4px;padding:8px 16px;border-radius:8px;background:rgba(129,140,248,.15);color:var(--p);font-size:13px;font-weight:500;border:none;cursor:pointer;margin-top:8px;transition:all .2s}
+.copy-btn:active{background:rgba(129,140,248,.25)}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">⚡ <span>Paperwork</span></div>
+  <div class="badge" id="vipInfo">...</div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" data-page="extract">🔗 链接转文字</div>
+  <div class="tab" data-page="download">⬇️ 素材下载</div>
+  <div class="tab" data-page="upload">📁 文件转写</div>
+  <div class="tab" data-page="tts">🎙️ 配音</div>
+  <div class="tab" data-page="history">📋 历史</div>
+</div>
+
+<!-- 链接转文字 -->
+<div class="page active" id="page-extract">
+  <div class="card">
+    <div class="field">
+      <label>视频链接</label>
+      <textarea id="extractLink" placeholder="粘贴抖音/B站/快手/小红书等链接..."></textarea>
+    </div>
+    <div class="field">
+      <label>语言</label>
+      <select id="extractLang">
+        <option value="16k_zh">中文普通话</option>
+        <option value="16k_en">英语</option>
+        <option value="16k_zh-PY">中英混合</option>
+        <option value="16k_ja">日语</option>
+        <option value="16k_yue">粤语</option>
+        <option value="16k_ko">韩语</option>
+      </select>
+    </div>
+    <button class="btn btn-p" onclick="doExtract()">提取文字</button>
+  </div>
+  <div id="extractResult"></div>
+</div>
+
+<!-- 素材下载 -->
+<div class="page" id="page-download">
+  <div class="card">
+    <div class="field">
+      <label>视频/图文链接</label>
+      <textarea id="downloadLink" placeholder="粘贴链接，提取文案+图片+视频..."></textarea>
+    </div>
+    <button class="btn btn-p" onclick="doDownload()">解析素材</button>
+  </div>
+  <div id="downloadResult"></div>
+</div>
+
+<!-- 文件转写 -->
+<div class="page" id="page-upload">
+  <div class="card">
+    <div class="field">
+      <label>文件类型</label>
+      <select id="uploadType" onchange="document.getElementById('uploadFile').accept=this.value==='pdf'?'.pdf':'.mp3,.mp4,.wav,.m4a,.flv,.wma,.amr,.aac,.ogg';document.getElementById('uploadLangGroup').style.display=this.value==='pdf'?'none':'block'">
+        <option value="audio">音视频文件</option>
+        <option value="pdf">PDF文档</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>选择文件</label>
+      <input type="file" id="uploadFile" accept=".mp3,.mp4,.wav,.m4a,.flv,.wma,.amr,.aac,.ogg">
+    </div>
+    <div class="field" id="uploadLangGroup">
+      <label>语言</label>
+      <select id="uploadLang">
+        <option value="16k_zh">中文普通话</option>
+        <option value="16k_en">英语</option>
+        <option value="16k_zh-PY">中英混合</option>
+      </select>
+    </div>
+    <button class="btn btn-p" onclick="doUpload()">开始转写</button>
+  </div>
+  <div id="uploadResult"></div>
+</div>
+
+<!-- 配音 -->
+<div class="page" id="page-tts">
+  <div class="card">
+    <div class="field">
+      <label>文字内容</label>
+      <textarea id="ttsText" placeholder="输入要配音的文字..."></textarea>
+    </div>
+    <div class="field">
+      <label>选择主播</label>
+      <select id="ttsVoice"><option>加载中...</option></select>
+    </div>
+    <button class="btn btn-p" onclick="doTTS()">生成配音</button>
+  </div>
+  <div id="ttsResult"></div>
+</div>
+
+<!-- 历史 -->
+<div class="page" id="page-history">
+  <div style="display:flex;gap:8px;margin-bottom:12px">
+    <input type="text" id="historySearch" placeholder="搜索历史..." style="flex:1">
+    <button class="btn btn-p btn-sm" onclick="loadHistory()" style="width:60px">搜索</button>
+  </div>
+  <div id="historyList"></div>
+</div>
+
+<!-- 登录 -->
+<div class="modal" id="loginModal">
+  <div class="modal-c">
+    <div class="handle"></div>
+    <h3>🔐 设置 Token</h3>
+    <div class="field">
+      <label>JWT Token</label>
+      <textarea id="tokenInput" rows="3" placeholder="从CLI获取: cat ~/.paperwork_token.json" style="font-size:12px"></textarea>
+    </div>
+    <button class="btn btn-p" onclick="saveToken()">保存并登录</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="nav">
+  <div class="nav-i active" data-page="extract"><span class="ico">📝</span>转文字</div>
+  <div class="nav-i" data-page="download"><span class="ico">⬇️</span>素材</div>
+  <div class="nav-i" data-page="upload"><span class="ico">📁</span>文件</div>
+  <div class="nav-i" data-page="tts"><span class="ico">🎙️</span>配音</div>
+  <div class="nav-i" data-page="history"><span class="ico">📋</span>历史</div>
+</div>
+
+<script>
+const API='https://paperwork.szchuyue.cn/webs',PID=2;
+const getToken=()=>localStorage.getItem('pw_token')||'';
+const setToken=t=>localStorage.setItem('pw_token',t);
+
+function toast(m,t='ok'){const e=document.getElementById('toast');e.textContent=m;e.className='toast show '+t;setTimeout(()=>e.className='toast',2500)}
+
+async function api(ep,d={}){
+  const tk=getToken();
+  if(!tk){document.getElementById('loginModal').classList.add('show');return null}
+  d.pid=PID;
+  const r=await fetch(`${API}/${ep}`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':tk},body:JSON.stringify(d)});
+  const j=await r.json();
+  if(j.Header?.Code===1001){localStorage.removeItem('pw_token');document.getElementById('loginModal').classList.add('show');toast('Token过期','err');return null}
+  return j;
+}
+
+function saveToken(){const t=document.getElementById('tokenInput').value.trim();if(t){setToken(t);document.getElementById('loginModal').classList.remove('show');toast('✅ 登录成功');loadInfo();loadVoices()}}
+
+function showSkeleton(el,n=3){el.innerHTML=Array(n).fill('<div class="skeleton"></div><div class="skeleton" style="width:60%"></div>').join('')}
+function showLoading(el,msg='处理中'){el.innerHTML=`<div class="status">${msg}<span class="loader"></span></div>`}
+function showError(el,msg){el.innerHTML=`<div class="status err">${msg}</div>`}
+function showResult(el,tag,text,extra=''){el.innerHTML=`<div class="result-card"><span class="tag">${tag}</span>\n${text}</div>${extra}`}
+
+// 切换页面
+document.querySelectorAll('.tab,.nav-i').forEach(el=>{
+  el.addEventListener('click',()=>{
+    const p=el.dataset.page;
+    document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('.tab,.nav-i').forEach(x=>x.classList.remove('active'));
+    document.getElementById('page-'+p).classList.add('active');
+    document.querySelectorAll(`[data-page="${p}"]`).forEach(x=>x.classList.add('active'));
+    if(p==='history')loadHistory();
+  });
+});
+
+// VIP
+async function loadInfo(){
+  const v=await api('User/getVipInfo');
+  if(v?.Content){const c=v.Content;const h=Math.floor(c.analysistime/3600),m=Math.floor(c.analysistime%3600/60);document.getElementById('vipInfo').innerHTML=c.is_vip?`VIP · 余${h}h${m}m`:'免费版'}
+}
+
+// 转文字
+async function doExtract(){
+  const link=document.getElementById('extractLink').value.trim(),lang=document.getElementById('extractLang').value,el=document.getElementById('extractResult');
+  if(!link)return toast('请输入链接','err');
+  showLoading(el,'提交中');
+  const r=await api('UrlPw/getUrl',{link,lan:lang});
+  if(!r||r.Header?.Code!==1000){showError(el,r?.Header?.Msg||'提交失败');return}
+  const tid=r.Content?.taskid;
+  if(!tid){showResult(el,'转写结果',r.Content?.content||r.Content?.text||'');return}
+  for(let i=0;i<60;i++){
+    showLoading(el,`转写中 · ${(i+1)*5}s`);
+    await new Promise(r=>setTimeout(r,5000));
+    const c=await api('UrlPw/getTaskRes',{taskid:tid});
+    if(c?.Header?.Code===1000){const t=c.Content?.content||c.Content?.text;if(t){showResult(el,'📝 转写结果',t,`<button class="copy-btn" onclick="navigator.clipboard.writeText(this.previousElementSibling.textContent);toast('已复制')">📋 复制全文</button>`);toast('✅ 完成');return}}
+    if(c?.Header?.Code!==1037&&c?.Header?.Code!==1000){showError(el,c?.Header?.Msg||'失败');return}
+  }
+}
+
+// 素材下载
+async function doDownload(){
+  const link=document.getElementById('downloadLink').value.trim(),el=document.getElementById('downloadResult');
+  if(!link)return toast('请输入链接','err');
+  showLoading(el,'解析中');
+  const r=await api('ParseUrl/getUrl',{link});
+  if(!r||r.Header?.Code!==1000){showError(el,r?.Header?.Msg||'解析失败');return}
+  const c=r.Content;let h='<div class="result-card">';
+  if(c.text)h+=`<span class="tag">📝 文案</span>\n${c.text}\n\n`;
+  if(c.cover)h+=`<img src="${c.cover}">`;
+  if(c.imgs?.length)c.imgs.forEach((img,i)=>{h+=`<img src="${typeof img==='string'?img:img.url}">`});
+  if(c.video)h+=`<a href="${c.video}" target="_blank" style="display:inline-flex;align-items:center;gap:4px;color:var(--p);text-decoration:none;margin-top:8px">🎬 下载视频</a>`;
+  h+='</div>';
+  el.innerHTML=h;
+  if(c.text)el.innerHTML+=`<button class="copy-btn" onclick="navigator.clipboard.writeText(document.querySelector('#downloadResult .result-card').textContent.trim());toast('已复制')">📋 复制文案</button>`;
+  toast('✅ 解析成功');
+}
+
+// 文件上传
+async function doUpload(){
+  const file=document.getElementById('uploadFile').files[0],type=document.getElementById('uploadType').value,lang=document.getElementById('uploadLang').value,el=document.getElementById('uploadResult');
+  if(!file)return toast('请选择文件','err');
+  showLoading(el,`上传 ${file.name}`);
+  const cos=await api('System/getCosToken');
+  if(!cos?.Content?.TmpSecretId){showError(el,'获取上传凭证失败');return}
+  const ci=cos.Content,key=`web/${Date.now()}_${file.name}`,url=`https://${ci.Bucket}.cos.${ci.Region}.myqcloud.com/${key}`;
+  try{const u=await fetch(url,{method:'PUT',headers:{'x-cos-security-token':ci.Token,'Content-Type':file.type||'application/octet-stream'},body:file});if(!u.ok)throw new Error(u.status)}catch(e){showError(el,'上传失败: '+e.message);return}
+  showLoading(el,'转写中');
+  if(type==='pdf'){
+    const r=await api('PaperWork/putPdfUrl',{url,filename:file.name});
+    if(r?.Header?.Code===1000){for(let i=0;i<30;i++){await new Promise(r=>setTimeout(r,3000));const c=await api('PaperWork/getPdfRes',{url});if(c?.Content?.content||c?.Content?.text){const t=c.Content.content||c.Content.text;showResult(el,'📄 PDF内容',t,`<button class="copy-btn" onclick="navigator.clipboard.writeText(this.previousElementSibling.textContent);toast('已复制')">📋 复制</button>`);toast('✅ 完成');return}showLoading(el,`解析中 · ${(i+1)*3}s`)}}
+    showError(el,'PDF解析失败');
+  }else{
+    const r=await api('UrlPw/addIdelTask',{url,filename:file.name,lan:lang});
+    if(r?.Header?.Code===1000){const tid=r.Content?.taskid;if(tid){for(let i=0;i<60;i++){await new Promise(r=>setTimeout(r,5000));const c=await api('UrlPw/getTaskRes',{taskid:tid});if(c?.Header?.Code===1000){const t=c.Content?.content||c.Content?.text;if(t){showResult(el,'📝 转写结果',t,`<button class="copy-btn" onclick="navigator.clipboard.writeText(this.previousElementSibling.textContent);toast('已复制')">📋 复制</button>`);toast('✅ 完成');return}}if(c?.Header?.Code!==1037&&c?.Header?.Code!==1000){showError(el,c?.Header?.Msg);return}showLoading(el,`转写中 · ${(i+1)*5}s`)}}}
+    showError(el,'转写失败: '+(r?.Header?.Msg||''));
+  }
+}
+
+// 配音
+async function doTTS(){
+  const text=document.getElementById('ttsText').value.trim(),sel=document.getElementById('ttsVoice'),voice=sel.value,type=sel.selectedOptions[0]?.dataset?.type||'',el=document.getElementById('ttsResult');
+  if(!text)return toast('请输入文字','err');
+  showLoading(el,'生成中');
+  const r=await api('Voice/tts',{text,voice,type,speed:1.0});
+  if(r?.Header?.Code===1000&&r.Content?.url){el.innerHTML=`<div class="result-card"><span class="tag">🔊 配音</span><audio controls src="${r.Content.url}" style="width:100%;margin-top:8px"></audio></div>`;toast('✅ 生成成功')}
+  else showError(el,r?.Header?.Msg||'配音失败');
+}
+
+async function loadVoices(){
+  const r=await api('Voice/getAnnouncer');if(!r?.Content)return;
+  const sel=document.getElementById('ttsVoice');sel.innerHTML='';
+  r.Content.forEach(g=>g.list?.forEach(v=>{const o=document.createElement('option');o.value=v.voice;o.textContent=v.name;o.dataset.type=v.type||'';sel.appendChild(o)}));
+}
+
+// 历史
+async function loadHistory(){
+  const kw=document.getElementById('historySearch').value.trim(),el=document.getElementById('historyList');
+  showSkeleton(el,4);
+  const ep=kw?'PaperWork/searchPaperWork':'PaperWork/paperWorkList';
+  const d=kw?{key_word:kw,page:1,pagesize:20}:{page:1,pagesize:20};
+  const r=await api(ep,d);
+  if(!r?.Content?.length){el.innerHTML='<div class="status">暂无记录</div>';return}
+  el.innerHTML=r.Content.map(it=>`
+    <div class="h-item">
+      <div class="h-meta">
+        <span class="time">${it.createtime||''} · ${(it.content||'').length}字</span>
+        <div class="actions">
+          <button class="btn btn-sm btn-ghost" onclick="event.stopPropagation();editH(${it.id},this)">编辑</button>
+          <button class="btn btn-sm" style="background:rgba(248,113,113,.15);color:var(--err)" onclick="event.stopPropagation();deleteH(${it.id},this)">删除</button>
+        </div>
+      </div>
+      <div class="h-preview" onclick="this.nextElementSibling.classList.toggle('show')">${(it.content||'').substring(0,100)}...</div>
+      <div class="h-full">${it.content||''}</div>
+    </div>`).join('');
+}
+
+async function deleteH(id,el){if(!confirm('确定删除？'))return;const r=await api('PaperWork/delPaperWork',{id});if(r?.Header?.Code===1000){el.closest('.h-item').remove();toast('已删除')}else toast('删除失败','err')}
+async function editH(id,el){const item=el.closest('.h-item'),full=item.querySelector('.h-full'),cur=full.textContent,n=prompt('编辑:',cur);if(!n||n===cur)return;const r=await api('PaperWork/editPaperWork',{id,content:n});if(r?.Header?.Code===1000){full.textContent=n;item.querySelector('.h-preview').textContent=n.substring(0,100)+'...';toast('已更新')}else toast('编辑失败','err')}
+
+// 初始化
+const ht=location.hash.startsWith('#token=')?location.hash.substring(7):null;
+if(ht){setToken(decodeURIComponent(ht));history.replaceState(null,'',location.pathname);toast('✅ Token已导入')}
+if(!getToken()){document.getElementById('loginModal').classList.add('show')}else{loadInfo();loadVoices()}
+</script>
+</body>
+</html>
