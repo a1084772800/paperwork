@@ -183,6 +183,7 @@ input[type=file]{color:var(--t2);font-size:13px}
       </select>
     </div>
     <button class="btn btn-p" onclick="doUpload()">开始转写</button>
+    <a href="https://spzwz.szchuyue.cn/audio" target="_blank" style="display:block;text-align:center;color:var(--t3);font-size:12px;margin-top:8px;text-decoration:none">文件较大？前往原网站上传 →</a>
   </div>
   <div id="uploadResult"></div>
 </div>
@@ -386,15 +387,10 @@ async function doUpload(){
   const file=document.getElementById('uploadFile').files[0],type=document.getElementById('uploadType').value,lang=document.getElementById('uploadLang').value,el=document.getElementById('uploadResult');
   if(!file)return toast('请选择文件','err');
   showLoading(el,`上传 ${file.name}`);
-  const cosRes=await api('System/getCosToken');
-  const cosContent=cosRes?.Content||{};
-  const creds=cosContent.credentials||cosContent;
-  const token=creds.sessionToken||creds.Token||'';
-  if(!token){showError(el,'获取上传凭证失败');return}
-  const bucket=cosContent.Bucket||'filetotext-1300462515';
-  const region=cosContent.Region||'ap-guangzhou';
-  const key=`web/${Date.now()}_${file.name}`,url=`https://${bucket}.cos.${region}.myqcloud.com/${key}`;
-  try{const u=await fetch(url,{method:'PUT',headers:{'x-cos-security-token':token,'Content-Type':file.type||'application/octet-stream'},body:file});if(!u.ok)throw new Error(u.status)}catch(e){showError(el,'上传失败: '+e.message);return}
+  // COS上传需要SDK签名，GitHub Pages无法直传。使用原网站处理
+  showError(el,'文件上传需要在原网站完成（COS签名限制）。\n\n请点击下方链接前往原网站上传：');
+  el.innerHTML+='<a href="https://spzwz.szchuyue.cn/'+(type==='pdf'?'pdf':'audio')+'" target="_blank" style="display:block;text-align:center;padding:12px;margin-top:8px;background:var(--p2);color:#fff;border-radius:12px;text-decoration:none;font-weight:600">前往原网站上传 →</a>';
+  return;
   showLoading(el,'转写中');
   if(type==='pdf'){
     const r=await api('PaperWork/putPdfUrl',{url,filename:file.name});
