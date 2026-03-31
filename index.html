@@ -323,7 +323,7 @@ async function doDownload(){
     allImgs.forEach(url=>{h+=`<img src="${url}" onclick="showImgOverlay(this.src)" loading="lazy" referrerpolicy="no-referrer">`});
     h+='</div>';
   }
-  if(c.video)h+=`<div style="margin-top:10px"><a href="${c.video}" target="_blank" style="display:inline-flex;align-items:center;gap:6px;color:var(--p);text-decoration:none;font-size:14px;font-weight:500">🎬 下载视频 →</a><button class="copy-btn" style="margin-left:8px" onclick="navigator.clipboard.writeText('${c.video.replace(/'/g,"\\'")}');toast('视频链接已复制，请在浏览器中打开下载')">📋 复制链接</button></div>`;
+  if(c.video)h+=`<div style="margin-top:12px"><span class="tag">🎬 视频</span><video controls preload="metadata" style="width:100%;border-radius:10px;margin-top:8px" referrerpolicy="no-referrer"><source src="${c.video}"></video><div style="margin-top:8px;display:flex;gap:8px"><a href="${c.video}" download style="display:inline-flex;align-items:center;gap:4px;color:var(--p);text-decoration:none;font-size:13px">⬇️ 下载</a><button class="copy-btn" onclick="navigator.clipboard.writeText('${c.video.replace(/'/g,"\\'")}');toast('链接已复制')">📋 复制链接</button></div></div>`;
   h+='</div>';
   el.innerHTML=h;
   if(c.text)el.innerHTML+=`<button class="copy-btn" onclick="navigator.clipboard.writeText(document.querySelector('#downloadResult .result-card').textContent.trim());toast('已复制')">📋 复制文案</button>`;
