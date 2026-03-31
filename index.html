@@ -7,6 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0f172a">
 <link rel="manifest" href="manifest.json">
+<script src="https://cdn.jsdelivr.net/npm/cos-js-sdk-v5/dist/cos-js-sdk-v5.min.js"></script>
 <title>Paperwork</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -387,10 +388,37 @@ async function doUpload(){
   const file=document.getElementById('uploadFile').files[0],type=document.getElementById('uploadType').value,lang=document.getElementById('uploadLang').value,el=document.getElementById('uploadResult');
   if(!file)return toast('请选择文件','err');
   showLoading(el,`上传 ${file.name}`);
-  // COS上传需要SDK签名，GitHub Pages无法直传。使用原网站处理
-  showError(el,'文件上传需要在原网站完成（COS签名限制）。\n\n请点击下方链接前往原网站上传：');
-  el.innerHTML+='<a href="https://spzwz.szchuyue.cn/'+(type==='pdf'?'pdf':'audio')+'" target="_blank" style="display:block;text-align:center;padding:12px;margin-top:8px;background:var(--p2);color:#fff;border-radius:12px;text-decoration:none;font-weight:600">前往原网站上传 →</a>';
-  return;
+  // 用COS JS SDK上传（带正确签名）
+  const cosRes=await api('System/getCosToken');
+  const cosContent=cosRes?.Content||{};
+  const creds=cosContent.credentials||cosContent;
+  const sessionToken=creds.sessionToken||creds.Token||'';
+  if(!sessionToken){showError(el,'获取上传凭证失败');return}
+
+  const bucket='filetotext-1300462515';
+  const region='ap-guangzhou';
+  const cosKey='web/'+Date.now()+'_'+file.name;
+
+  try{
+    const cos=new COS({
+      getAuthorization:function(options,callback){
+        callback({
+          TmpSecretId:creds.tmpSecretId||creds.TmpSecretId||'',
+          TmpSecretKey:creds.tmpSecretKey||creds.TmpSecretKey||'',
+          SecurityToken:sessionToken,
+          StartTime:Math.floor(Date.now()/1000),
+          ExpiredTime:cosContent.expiredTime||Math.floor(Date.now()/1000)+1800,
+        });
+      }
+    });
+    await new Promise((resolve,reject)=>{
+      cos.putObject({Bucket:bucket,Region:region,Key:cosKey,Body:file,
+        onProgress:function(info){if(info.percent)showLoading(el,'上传中 '+Math.round(info.percent*100)+'%')}
+      },function(err,data){if(err)reject(err);else resolve(data)});
+    });
+  }catch(e){showError(el,'上传失败: '+e.message);return}
+
+  const cosUrl='https://'+bucket+'.cos.'+region+'.myqcloud.com/'+cosKey;
   showLoading(el,'转写中');
   if(type==='pdf'){
     const r=await api('PaperWork/putPdfUrl',{url,filename:file.name});
