@@ -397,7 +397,8 @@ async function doUpload(){
 
   const bucket='filetotext-1300462515';
   const region='ap-guangzhou';
-  const cosKey='web/'+Date.now()+'_'+file.name;
+  const folder=type==='pdf'?'pdf-files/':'audio-files/';
+  const cosKey=folder+'file_'+Date.now()+'_'+Math.random().toString(36).substring(2,6)+'.'+file.name.split('.').pop();
 
   try{
     const cos=new COS({
@@ -418,8 +419,9 @@ async function doUpload(){
     });
   }catch(e){showError(el,'上传失败: '+e.message);return}
 
-  const cosUrl='https://'+bucket+'.cos.'+region+'.myqcloud.com/'+cosKey;
-  showLoading(el,'转写中');
+  const cosUrl='https://filetotext.szshht.cn/'+cosKey;
+  showLoading(el,'提交解析...');
+  await new Promise(r=>setTimeout(r,3000)); // 等COS文件传播
   if(type==='pdf'){
     const r=await api('PaperWork/putPdfUrl',{link:cosUrl});
     if(r?.Header?.Code===1000&&r.Content?.token){
