@@ -323,7 +323,7 @@ async function doDownload(){
     allImgs.forEach(url=>{h+=`<img src="${url}" onclick="showImgOverlay(this.src)" loading="lazy">`});
     h+='</div>';
   }
-  if(c.video)h+=`<a href="${c.video}" target="_blank" style="display:inline-flex;align-items:center;gap:6px;color:var(--p);text-decoration:none;margin-top:10px;font-size:14px;font-weight:500">🎬 下载视频 →</a>`;
+  if(c.video)h+=`<div style="margin-top:10px"><a href="${c.video}" target="_blank" style="display:inline-flex;align-items:center;gap:6px;color:var(--p);text-decoration:none;font-size:14px;font-weight:500">🎬 下载视频 →</a><button class="copy-btn" style="margin-left:8px" onclick="navigator.clipboard.writeText('${c.video.replace(/'/g,"\\'")}');toast('视频链接已复制，请在浏览器中打开下载')">📋 复制链接</button></div>`;
   h+='</div>';
   el.innerHTML=h;
   if(c.text)el.innerHTML+=`<button class="copy-btn" onclick="navigator.clipboard.writeText(document.querySelector('#downloadResult .result-card').textContent.trim());toast('已复制')">📋 复制文案</button>`;
