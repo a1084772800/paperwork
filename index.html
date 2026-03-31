@@ -238,6 +238,52 @@ input[type=file]{color:var(--t2);font-size:13px}
 <script>
 const API='https://paperwork.szchuyue.cn/webs',PID=2;
 
+// 视频加载（fetch+blob绕过CDN防盗链）
+async function loadVideo(vid, url){
+  const video=document.getElementById(vid);
+  const status=document.getElementById(vid+'_status');
+  try{
+    // 先尝试直接加载
+    video.src=url;
+    video.load();
+    await new Promise((resolve,reject)=>{
+      video.onloadeddata=resolve;
+      video.onerror=()=>reject('direct failed');
+      setTimeout(()=>reject('timeout'),8000);
+    });
+    if(status)status.remove();
+  }catch(e){
+    // 直接加载失败，用fetch+blob
+    try{
+      if(status)status.textContent='正在缓存视频...';
+      const r=await fetch(url,{referrerPolicy:'no-referrer',mode:'cors'});
+      if(!r.ok)throw new Error(r.status);
+      const blob=await r.blob();
+      video.src=URL.createObjectURL(blob);
+      video.dataset.blobUrl=video.src;
+      video.dataset.originalUrl=url;
+      if(status)status.remove();
+    }catch(e2){
+      // fetch也失败，显示复制链接提示
+      if(status)status.innerHTML='视频加载失败，请用"复制链接"在浏览器中打开';
+      video.style.display='none';
+    }
+  }
+}
+
+// 保存视频
+function saveVideo(vid){
+  const video=document.getElementById(vid);
+  const url=video.dataset.blobUrl||video.src;
+  if(url){
+    const a=document.createElement('a');
+    a.href=url;
+    a.download='video.mp4';
+    a.click();
+    toast('开始下载');
+  }
+}
+
 // 图片全屏预览
 function showImgOverlay(src){
   const ov=document.createElement('div');
@@ -323,7 +369,12 @@ async function doDownload(){
     allImgs.forEach(url=>{h+=`<img src="${url}" onclick="showImgOverlay(this.src)" loading="lazy" referrerpolicy="no-referrer">`});
     h+='</div>';
   }
-  if(c.video)h+=`<div style="margin-top:12px"><span class="tag">🎬 视频</span><video controls preload="metadata" style="width:100%;border-radius:10px;margin-top:8px" referrerpolicy="no-referrer"><source src="${c.video}"></video><div style="margin-top:8px;display:flex;gap:8px"><a href="${c.video}" download style="display:inline-flex;align-items:center;gap:4px;color:var(--p);text-decoration:none;font-size:13px">⬇️ 下载</a><button class="copy-btn" onclick="navigator.clipboard.writeText('${c.video.replace(/'/g,"\\'")}');toast('链接已复制')">📋 复制链接</button></div></div>`;
+  if(c.video){
+    const vid='vid_'+Date.now();
+    const safeUrl=c.video.replace(/'/g,"\\'");
+    h+='<div style="margin-top:12px"><span class="tag">🎬 视频</span><video id="'+vid+'" controls preload="none" style="width:100%;border-radius:10px;margin-top:8px;background:#000" referrerpolicy="no-referrer"></video><div class="status" id="'+vid+'_status">加载视频中...<span class="loader"></span></div><div style="margin-top:8px;display:flex;gap:8px"><button class="copy-btn" onclick="saveVideo(\''+vid+'\')">⬇️ 保存视频</button><button class="copy-btn" onclick="navigator.clipboard.writeText(\''+safeUrl+'\');toast(\'链接已复制\')">📋 复制链接</button></div></div>';
+    setTimeout(function(){loadVideo(vid,c.video)},100);
+  }
   h+='</div>';
   el.innerHTML=h;
   if(c.text)el.innerHTML+=`<button class="copy-btn" onclick="navigator.clipboard.writeText(document.querySelector('#downloadResult .result-card').textContent.trim());toast('已复制')">📋 复制文案</button>`;
