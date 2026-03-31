@@ -166,14 +166,14 @@ input[type=file]{color:var(--t2);font-size:13px}
   <div class="card">
     <div class="field">
       <label>文件类型</label>
-      <select id="uploadType" onchange="document.getElementById('uploadFile').accept=this.value==='pdf'?'.pdf':'.mp3,.mp4,.wav,.m4a,.flv,.wma,.amr,.aac,.ogg';document.getElementById('uploadLangGroup').style.display=this.value==='pdf'?'none':'block'">
+      <select id="uploadType" onchange="document.getElementById('uploadFile').accept=this.value==='pdf'?'.pdf,.doc,.docx,.txt,.srt':'.wav,.pcm,.ogg,.mp3,.m4a,.aac,.wma,.flv,.amr,.flac,.mp4,.speex,.silk';document.getElementById('uploadLangGroup').style.display=this.value==='pdf'?'none':'block'">
         <option value="audio">音视频文件</option>
-        <option value="pdf">PDF文档</option>
+        <option value="pdf">文档 (PDF/Word/TXT/SRT)</option>
       </select>
     </div>
     <div class="field">
       <label>选择文件</label>
-      <input type="file" id="uploadFile" accept=".mp3,.mp4,.wav,.m4a,.flv,.wma,.amr,.aac,.ogg">
+      <input type="file" id="uploadFile" accept=".wav,.pcm,.ogg,.mp3,.m4a,.aac,.wma,.flv,.amr,.flac,.mp4,.speex,.silk">
     </div>
     <div class="field" id="uploadLangGroup">
       <label>语言</label>
@@ -421,11 +421,21 @@ async function doUpload(){
   const cosUrl='https://'+bucket+'.cos.'+region+'.myqcloud.com/'+cosKey;
   showLoading(el,'转写中');
   if(type==='pdf'){
-    const r=await api('PaperWork/putPdfUrl',{url,filename:file.name});
-    if(r?.Header?.Code===1000){for(let i=0;i<30;i++){await new Promise(r=>setTimeout(r,3000));const c=await api('PaperWork/getPdfRes',{url});if(c?.Content?.content||c?.Content?.text){const t=c.Content.content||c.Content.text;showResult(el,'📄 PDF内容',t,`<button class="copy-btn" onclick="navigator.clipboard.writeText(this.previousElementSibling.textContent);toast('已复制')">📋 复制</button>`);toast('✅ 完成');return}showLoading(el,`解析中 · ${(i+1)*3}s`)}}
-    showError(el,'PDF解析失败');
+    const r=await api('PaperWork/putPdfUrl',{link:cosUrl});
+    if(r?.Header?.Code===1000&&r.Content?.token){
+      const pdfToken=r.Content.token;
+      for(let i=0;i<30;i++){await new Promise(r=>setTimeout(r,3000));
+        const c=await api('PaperWork/getPdfRes',{token:pdfToken});
+        if(c?.Header?.Code===1000&&c.Content?.url){
+          try{const fr=await fetch(c.Content.url);const t=await fr.text();
+            showResult(el,'📄 文档内容',t,`<button class="copy-btn" onclick="navigator.clipboard.writeText(this.previousElementSibling.textContent);toast('已复制')">📋 复制</button>`);toast('✅ 完成');return}catch(e){}
+        }
+        if(c?.Content?.content||c?.Content?.text){const t=c.Content.content||c.Content.text;showResult(el,'📄 文档内容',t,`<button class="copy-btn" onclick="navigator.clipboard.writeText(this.previousElementSibling.textContent);toast('已复制')">📋 复制</button>`);toast('✅ 完成');return}
+        showLoading(el,`解析中 · ${(i+1)*3}s`)}
+    }
+    showError(el,'文档解析失败: '+(r?.Header?.Msg||''));
   }else{
-    const r=await api('UrlPw/addIdelTask',{url,filename:file.name,lan:lang});
+    const r=await api('UrlPw/addIdelTask',{url:cosUrl,filename:file.name,lan:lang});
     if(r?.Header?.Code===1000){const tid=r.Content?.taskid;if(tid){for(let i=0;i<60;i++){await new Promise(r=>setTimeout(r,5000));const c=await api('UrlPw/getTaskRes',{taskid:tid});if(c?.Header?.Code===1000){const t=c.Content?.content||c.Content?.text;if(t){showResult(el,'📝 转写结果',t,`<button class="copy-btn" onclick="navigator.clipboard.writeText(this.previousElementSibling.textContent);toast('已复制')">📋 复制</button>`);toast('✅ 完成');return}}if(c?.Header?.Code!==1037&&c?.Header?.Code!==1000){showError(el,c?.Header?.Msg);return}showLoading(el,`转写中 · ${(i+1)*5}s`)}}}
     showError(el,'转写失败: '+(r?.Header?.Msg||''));
   }
